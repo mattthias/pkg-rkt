@@ -21,20 +21,20 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema"
-	"github.com/coreos/rocket/common"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema"
+	"github.com/coreos/rkt/common"
 )
 
 const (
-	enterEntrypoint = "coreos.com/rocket/stage1/enter"
-	runEntrypoint   = "coreos.com/rocket/stage1/run"
+	enterEntrypoint = "coreos.com/rkt/stage1/enter"
+	runEntrypoint   = "coreos.com/rkt/stage1/run"
 )
 
-// getEntrypoint retrieves the named entrypoint from the stage1 manifest for a given container
+// getEntrypoint retrieves the named entrypoint from the stage1 manifest for a given pod
 func getStage1Entrypoint(cdir string, entrypoint string) (string, error) {
 	b, err := ioutil.ReadFile(common.Stage1ManifestPath(cdir))
 	if err != nil {
-		return "", fmt.Errorf("error reading container manifest: %v", err)
+		return "", fmt.Errorf("error reading pod manifest: %v", err)
 	}
 
 	s1m := schema.ImageManifest{}

@@ -27,13 +27,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/rocket/cas"
-	"github.com/coreos/rocket/pkg/aci"
-	"github.com/coreos/rocket/pkg/keystore"
-	"github.com/coreos/rocket/pkg/keystore/keystoretest"
+	"github.com/coreos/rkt/cas"
+	"github.com/coreos/rkt/pkg/aci"
+	"github.com/coreos/rkt/pkg/keystore"
+	"github.com/coreos/rkt/pkg/keystore/keystoretest"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/discovery"
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema/types"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/discovery"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema/types"
 )
 
 func TestNewDiscoveryApp(t *testing.T) {
@@ -124,7 +124,7 @@ func TestDownloading(t *testing.T) {
 
 	imj := `{
 			"acKind": "ImageManifest",
-			"acVersion": "0.5.1",
+			"acVersion": "0.5.3",
 			"name": "example.com/test01"
 		}`
 
@@ -262,7 +262,7 @@ func TestFetchImage(t *testing.T) {
 	defer ts.Close()
 	_, err = fetchImage(fmt.Sprintf("%s/app.aci", ts.URL), ds, ks, true)
 	if err != nil {
-		t.Fatalf("unexpected error %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

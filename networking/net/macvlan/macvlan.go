@@ -19,11 +19,11 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/vishvananda/netlink"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/vishvananda/netlink"
 
-	"github.com/coreos/rocket/networking/ipam"
-	rktnet "github.com/coreos/rocket/networking/net"
-	"github.com/coreos/rocket/networking/util"
+	"github.com/coreos/rkt/networking/ipam"
+	rktnet "github.com/coreos/rkt/networking/net"
+	"github.com/coreos/rkt/networking/util"
 )
 
 type Net struct {
@@ -109,7 +109,7 @@ func cmdAdd(args *util.CmdArgs) error {
 	}
 	defer netns.Close()
 
-	tmpName := "veth" + args.ContID.String()[:4]
+	tmpName := "veth" + args.PodID.String()[:4]
 	if err = createMacvlan(n, tmpName, netns); err != nil {
 		return err
 	}

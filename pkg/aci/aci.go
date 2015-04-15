@@ -27,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/aci"
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema"
-	"github.com/coreos/rocket/Godeps/_workspace/src/golang.org/x/crypto/openpgp"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/aci"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema"
+	"github.com/coreos/rkt/Godeps/_workspace/src/golang.org/x/crypto/openpgp"
 )
 
 type ACIEntry struct {
@@ -106,7 +106,7 @@ func (aw *imageArchiveWriter) Close() error {
 // NewBasicACI creates a new ACI in the given directory with the given name.
 // Used for testing.
 func NewBasicACI(dir string, name string) (*os.File, error) {
-	manifest := fmt.Sprintf(`{"acKind":"ImageManifest","acVersion":"0.5.1","name":"%s"}`, name)
+	manifest := fmt.Sprintf(`{"acKind":"ImageManifest","acVersion":"0.5.3","name":"%s"}`, name)
 	return NewACI(dir, manifest, nil)
 }
 

@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/rocket/pkg/lock"
+	"github.com/coreos/rkt/pkg/lock"
 )
 
 var defaultDataDir = "/var/lib/rkt/networks"
 
 type Store struct {
-	lock.DirLock
+	lock.FileLock
 	dataDir string
 }
 
@@ -22,7 +22,7 @@ func New(network string) (*Store, error) {
 		return nil, err
 	}
 
-	lk, err := lock.NewLock(dir)
+	lk, err := lock.NewLock(dir, lock.Dir)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (s *Store) Release(ip net.IP) error {
 
 // N.B. This function eats errors to be tolerant and
 // release as much as possible
-func (s *Store) ReleaseByContainerID(id string) error {
+func (s *Store) ReleaseByPodID(id string) error {
 	err := filepath.Walk(s.dataDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil

@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema/types"
-	"github.com/coreos/rocket/pkg/aci"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema/types"
+	"github.com/coreos/rkt/pkg/aci"
 )
 
 const tstprefix = "cas-test"
@@ -155,7 +155,7 @@ func TestGetImageManifest(t *testing.T) {
 
 	imj := `{
 			"acKind": "ImageManifest",
-			"acVersion": "0.5.1",
+			"acVersion": "0.5.3",
 			"name": "example.com/test01"
 		}`
 
@@ -347,7 +347,7 @@ func TestTreeStore(t *testing.T) {
 	imj := `
 		{
 		    "acKind": "ImageManifest",
-		    "acVersion": "0.5.1",
+		    "acVersion": "0.5.3",
 		    "name": "example.com/test01"
 		}
 	`

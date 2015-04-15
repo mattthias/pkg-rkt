@@ -25,24 +25,25 @@ import (
 )
 
 const (
-	rocketGroup   = "rocket"
+	rktGroup      = "rkt"
 	groupFilePath = "/etc/group"
+	casDbPerm     = os.FileMode(0664)
 )
 
 var (
 	cmdInstall = &Command{
 		Name:    "install",
-		Summary: "Set up Rocket data directories with correct permissions",
+		Summary: "Set up rkt data directories with correct permissions",
 		Usage:   "",
 		Run:     runInstall,
 	}
 
 	// dirs relative to globalFlags.Dir
 	dirs = map[string]os.FileMode{
-		".":          os.FileMode(0755),
-		"cas":        os.FileMode(0775),
-		"tmp":        os.FileMode(0775),
-		"containers": os.FileMode(0700),
+		".":    os.FileMode(0755),
+		"cas":  os.FileMode(0775),
+		"tmp":  os.FileMode(0775),
+		"pods": os.FileMode(0700),
 	}
 )
 
@@ -133,8 +134,8 @@ func lookupGid(groupName string) (gid int, err error) {
 	return group.Gid, nil
 }
 
-func setDirPermissions(path string, uid int, gid int, perm os.FileMode) error {
-	if err := os.Chown(path, 0, gid); err != nil {
+func setPermissions(path string, uid int, gid int, perm os.FileMode) error {
+	if err := os.Chown(path, uid, gid); err != nil {
 		return fmt.Errorf("error setting %q directory group: %v", path, err)
 	}
 
@@ -153,7 +154,7 @@ func createDirStructure(gid int) error {
 			return fmt.Errorf("error creating %q directory: %v", path, err)
 		}
 
-		if err := setDirPermissions(path, 0, gid, perm); err != nil {
+		if err := setPermissions(path, 0, gid, perm); err != nil {
 			return err
 		}
 	}
@@ -161,20 +162,74 @@ func createDirStructure(gid int) error {
 	return nil
 }
 
+func setCasDirPermissions(casPath string, gid int, perm os.FileMode) error {
+	casWalker := func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Mode().IsDir() {
+			if err := setPermissions(path, 0, gid, perm); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	if err := filepath.Walk(casPath, casWalker); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func setCasDbFilesPermissions(casDbPath string, gid int, perm os.FileMode) error {
+	casDbWalker := func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Mode().IsRegular() {
+			if err := setPermissions(path, 0, gid, perm); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	if err := filepath.Walk(casDbPath, casDbWalker); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func runInstall(args []string) (exit int) {
-	gid, err := lookupGid(rocketGroup)
+	gid, err := lookupGid(rktGroup)
 	if err != nil {
-		stderr("install: error looking up rocket gid: %v", err)
+		stderr("install: error looking up rkt gid: %v", err)
 		return 1
 	}
 
-	err = createDirStructure(gid)
-	if err != nil {
-		stderr("install: error creating Rocket directory structure: %v", err)
+	if err := createDirStructure(gid); err != nil {
+		stderr("install: error creating rkt directory structure: %v", err)
 		return 1
 	}
 
-	fmt.Println("Rocket directory structure successfully created.")
+	casDirPerm := dirs["cas"]
+	casPath := filepath.Join(globalFlags.Dir, "cas")
+	if err := setCasDirPermissions(casPath, gid, casDirPerm); err != nil {
+		stderr("install: error setting cas permissions: %v", err)
+		return 1
+	}
+
+	casDbPath := filepath.Join(casPath, "db")
+	if err := setCasDbFilesPermissions(casDbPath, gid, casDbPerm); err != nil {
+		stderr("install: error setting cas db permissions: %v", err)
+		return 1
+	}
+
+	fmt.Println("rkt directory structure successfully created.")
 
 	return 0
 }

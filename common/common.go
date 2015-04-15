@@ -17,13 +17,16 @@
 package common
 
 import (
+	"bufio"
 	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/aci"
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema/types"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/aci"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema/types"
 )
 
 const (
@@ -34,9 +37,7 @@ const (
 	Stage1IDFilename        = "stage1ID"
 	OverlayPreparedFilename = "overlay-prepared"
 
-	MetadataServiceIP      = "169.254.169.255"
-	MetadataServicePubPort = 80
-	MetadataServicePrvPort = 2375
+	MetadataServicePort    = 2375
 	MetadataServiceRegSock = "/run/rkt/metadata-svc.sock"
 )
 
@@ -97,8 +98,8 @@ func ImageManifestPath(root string, imageID types.Hash) string {
 }
 
 // MetadataServicePublicURL returns the public URL used to host the metadata service
-func MetadataServicePublicURL() string {
-	return fmt.Sprintf("http://%v:%v", MetadataServiceIP, MetadataServicePubPort)
+func MetadataServicePublicURL(ip net.IP) string {
+	return fmt.Sprintf("http://%v:%v", ip, MetadataServicePort)
 }
 
 func GetRktLockFD() (int, error) {
@@ -110,4 +111,24 @@ func GetRktLockFD() (int, error) {
 		return int(fd), nil
 	}
 	return -1, fmt.Errorf("%v env var is not set", EnvLockFd)
+}
+
+// SupportsOverlay returns whether the system supports overlay filesystem
+func SupportsOverlay() bool {
+	exec.Command("modprobe", "overlay").Run()
+
+	f, err := os.Open("/proc/filesystems")
+	if err != nil {
+		fmt.Println("error opening /proc/filesystems")
+		return false
+	}
+	defer f.Close()
+
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		if s.Text() == "nodev\toverlay" {
+			return true
+		}
+	}
+	return false
 }

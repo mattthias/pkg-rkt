@@ -6,14 +6,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/rocket/pkg/aci"
+	"github.com/coreos/rkt/pkg/aci"
 )
 
 func treeStoreDSWriteACI(dir string, ds *Store) (string, error) {
 	imj := `
 		{
 		    "acKind": "ImageManifest",
-		    "acVersion": "0.5.1",
+		    "acVersion": "0.5.3",
 		    "name": "example.com/test01"
 		}
 	`

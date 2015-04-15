@@ -24,10 +24,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema/types"
-	"github.com/coreos/rocket/cas"
-	"github.com/coreos/rocket/pkg/keystore"
-	"github.com/coreos/rocket/stage0"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema/types"
+	"github.com/coreos/rkt/cas"
+	"github.com/coreos/rkt/common"
+	"github.com/coreos/rkt/pkg/keystore"
+	"github.com/coreos/rkt/stage0"
 )
 
 var (
@@ -40,9 +41,10 @@ var (
 	flagInheritEnv           bool
 	flagExplicitEnv          envMap
 	flagInteractive          bool
+	flagNoOverlay            bool
 	cmdRun                   = &Command{
 		Name:    "run",
-		Summary: "Run image(s) in an application container in rocket",
+		Summary: "Run image(s) in a pod in rkt",
 		Usage:   "[--volume name,kind=host,...] IMAGE [-- image-args...[---]]...",
 		Description: `IMAGE should be a string referencing an image; either a hash, local file on disk, or URL.
 They will be checked in that order and the first match will be used.
@@ -65,13 +67,14 @@ func init() {
 		}
 	}
 
-	cmdRun.Flags.StringVar(&flagStage1Image, "stage1-image", defaultStage1Image, `image to use as stage1. Local paths and http/https URLs are supported. If empty, Rocket will look for a file called "stage1.aci" in the same directory as rkt itself`)
-	cmdRun.Flags.Var(&flagVolumes, "volume", "volumes to mount into the shared container environment")
-	cmdRun.Flags.BoolVar(&flagPrivateNet, "private-net", false, "give container a private network")
+	cmdRun.Flags.StringVar(&flagStage1Image, "stage1-image", defaultStage1Image, `image to use as stage1. Local paths and http/https URLs are supported. If empty, rkt will look for a file called "stage1.aci" in the same directory as rkt itself`)
+	cmdRun.Flags.Var(&flagVolumes, "volume", "volumes to mount into the pod")
+	cmdRun.Flags.BoolVar(&flagPrivateNet, "private-net", false, "give pod a private network")
 	cmdRun.Flags.BoolVar(&flagSpawnMetadataService, "spawn-metadata-svc", false, "launch metadata svc if not running")
 	cmdRun.Flags.BoolVar(&flagInheritEnv, "inherit-env", false, "inherit all environment variables not set by apps")
+	cmdRun.Flags.BoolVar(&flagNoOverlay, "no-overlay", false, "disable overlay filesystem")
 	cmdRun.Flags.Var(&flagExplicitEnv, "set-env", "an environment variable to set for apps in the form name=value")
-	cmdRun.Flags.BoolVar(&flagInteractive, "interactive", false, "the container is interactive")
+	cmdRun.Flags.BoolVar(&flagInteractive, "interactive", false, "run pod interactively")
 	flagVolumes = volumeList{}
 }
 
@@ -225,16 +228,16 @@ func runRun(args []string) (exit int) {
 		return 1
 	}
 
-	c, err := newContainer()
+	p, err := newPod()
 	if err != nil {
-		stderr("Error creating new container: %v", err)
+		stderr("Error creating new pod: %v", err)
 		return 1
 	}
 
 	cfg := stage0.CommonConfig{
 		Store:       ds,
 		Stage1Image: *s1img,
-		UUID:        c.uuid,
+		UUID:        p.uuid,
 		Images:      imgs,
 		Debug:       globalFlags.Debug,
 	}
@@ -245,22 +248,23 @@ func runRun(args []string) (exit int) {
 		Volumes:      []types.Volume(flagVolumes),
 		InheritEnv:   flagInheritEnv,
 		ExplicitEnv:  flagExplicitEnv.Strings(),
+		UseOverlay:   !flagNoOverlay && common.SupportsOverlay(),
 	}
-	err = stage0.Prepare(pcfg, c.path(), c.uuid)
+	err = stage0.Prepare(pcfg, p.path(), p.uuid)
 	if err != nil {
 		stderr("run: error setting up stage0: %v", err)
 		return 1
 	}
 
 	// get the lock fd for run
-	lfd, err := c.Fd()
+	lfd, err := p.Fd()
 	if err != nil {
-		stderr("Error getting container lock fd: %v", err)
+		stderr("Error getting pod lock fd: %v", err)
 		return 1
 	}
 
-	// skip prepared by jumping directly to run, we own this container
-	if err := c.xToRun(); err != nil {
+	// skip prepared by jumping directly to run, we own this pod
+	if err := p.xToRun(); err != nil {
 		stderr("run: unable to transition to run: %v", err)
 		return 1
 	}
@@ -272,7 +276,7 @@ func runRun(args []string) (exit int) {
 		LockFd:               lfd,
 		Interactive:          flagInteractive,
 	}
-	stage0.Run(rcfg, c.path()) // execs, never returns
+	stage0.Run(rcfg, p.path()) // execs, never returns
 
 	return 1
 }

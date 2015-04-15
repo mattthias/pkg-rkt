@@ -20,9 +20,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/rocket/pkg/lock"
+	"github.com/coreos/rkt/pkg/lock"
 
-	_ "github.com/coreos/rocket/Godeps/_workspace/src/github.com/cznic/ql/driver"
+	_ "github.com/coreos/rkt/Godeps/_workspace/src/github.com/cznic/ql/driver"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 
 type DB struct {
 	dbdir string
-	lock  *lock.DirLock
+	lock  *lock.FileLock
 	sqldb *sql.DB
 }
 
@@ -47,7 +47,7 @@ func (db *DB) Open() error {
 	if db.lock != nil {
 		panic("cas db lock already gained")
 	}
-	dl, err := lock.ExclusiveLock(db.dbdir)
+	dl, err := lock.ExclusiveLock(db.dbdir, lock.Dir)
 	if err != nil {
 		return err
 	}

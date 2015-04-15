@@ -17,14 +17,13 @@
 package stage0
 
 //
-// Rocket is a reference implementation of the app container specification.
+// rkt is a reference implementation of the app container specification.
 //
-// Execution on Rocket is divided into a number of stages, and the `rkt`
+// Execution on rkt is divided into a number of stages, and the `rkt`
 // binary implements the first stage (stage 0)
 //
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -37,13 +36,13 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema"
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema/types"
-	"github.com/coreos/rocket/cas"
-	"github.com/coreos/rocket/common"
-	"github.com/coreos/rocket/pkg/aci"
-	"github.com/coreos/rocket/pkg/sys"
-	"github.com/coreos/rocket/version"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema/types"
+	"github.com/coreos/rkt/cas"
+	"github.com/coreos/rkt/common"
+	"github.com/coreos/rkt/pkg/aci"
+	"github.com/coreos/rkt/pkg/sys"
+	"github.com/coreos/rkt/version"
 )
 
 // configuration parameters required by Prepare
@@ -53,7 +52,8 @@ type PrepareConfig struct {
 	ExecAppends [][]string     // appendages to each image's app.exec lines (empty when none, length should match length of Images)
 	InheritEnv  bool           // inherit parent environment into apps
 	ExplicitEnv []string       // always set these environment variables for all the apps
-	Volumes     []types.Volume // list of volumes that rocket can provide to applications
+	Volumes     []types.Volume // list of volumes that rkt can provide to applications
+	UseOverlay  bool           // prepare pod with overlay fs
 }
 
 // configuration parameters needed by Run
@@ -71,7 +71,7 @@ type CommonConfig struct {
 	Stage1Image types.Hash   // stage1 image containing usable /init and /enter entrypoints
 	UUID        *types.UUID  // UUID of the pod
 	Images      []types.Hash // application images
-	PodsDir     string       // root directory for rocket pods
+	PodsDir     string       // root directory for rkt pods
 	Debug       bool
 }
 
@@ -108,10 +108,8 @@ func Prepare(cfg PrepareConfig, dir string, uuid *types.UUID) error {
 		log.SetOutput(os.Stderr)
 	}
 
-	useOverlay := supportsOverlay()
-
 	log.Printf("Preparing stage1")
-	if err := prepareStage1Image(cfg, cfg.Stage1Image, dir, useOverlay); err != nil {
+	if err := prepareStage1Image(cfg, cfg.Stage1Image, dir, cfg.UseOverlay); err != nil {
 		return fmt.Errorf("error preparing stage1: %v", err)
 	}
 
@@ -127,7 +125,7 @@ func Prepare(cfg PrepareConfig, dir string, uuid *types.UUID) error {
 	cm.ACVersion = *v
 
 	for i, img := range cfg.Images {
-		am, err := prepareAppImage(cfg, img, dir, useOverlay)
+		am, err := prepareAppImage(cfg, img, dir, cfg.UseOverlay)
 		if err != nil {
 			return fmt.Errorf("error setting up image %s: %v", img, err)
 		}
@@ -181,7 +179,7 @@ func Prepare(cfg PrepareConfig, dir string, uuid *types.UUID) error {
 		return fmt.Errorf("error writing stage1 ID: %v", err)
 	}
 
-	if useOverlay {
+	if cfg.UseOverlay {
 		// mark the pod as prepared with overlay
 		f, err := os.Create(filepath.Join(dir, common.OverlayPreparedFilename))
 		if err != nil {
@@ -193,25 +191,6 @@ func Prepare(cfg PrepareConfig, dir string, uuid *types.UUID) error {
 	return nil
 }
 
-func supportsOverlay() bool {
-	exec.Command("modprobe", "overlay").Run()
-
-	f, err := os.Open("/proc/filesystems")
-	if err != nil {
-		fmt.Println("error opening /proc/filesystems")
-		return false
-	}
-	defer f.Close()
-
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		if s.Text() == "nodev\toverlay" {
-			return true
-		}
-	}
-	return false
-}
-
 func preparedWithOverlay(dir string) (bool, error) {
 	_, err := os.Stat(filepath.Join(dir, common.OverlayPreparedFilename))
 	if os.IsNotExist(err) {
@@ -221,7 +200,7 @@ func preparedWithOverlay(dir string) (bool, error) {
 		return false, err
 	}
 
-	if !supportsOverlay() {
+	if !common.SupportsOverlay() {
 		return false, fmt.Errorf("the pod was prepared with overlay but overlay is not supported")
 	}
 
@@ -382,17 +361,17 @@ func prepareStage1Image(cfg PrepareConfig, img types.Hash, cdir string, useOverl
 		return fmt.Errorf("error creating stage1 directory: %v", err)
 	}
 
-	if useOverlay {
-		if err := cfg.Store.RenderTreeStore(img.String(), false); err != nil {
+	if err := cfg.Store.RenderTreeStore(img.String(), false); err != nil {
+		return fmt.Errorf("error rendering tree image: %v", err)
+	}
+	if err := cfg.Store.CheckTreeStore(img.String()); err != nil {
+		log.Printf("Warning: tree cache is in a bad state. Rebuilding...")
+		if err := cfg.Store.RenderTreeStore(img.String(), true); err != nil {
 			return fmt.Errorf("error rendering tree image: %v", err)
 		}
-		if err := cfg.Store.CheckTreeStore(img.String()); err != nil {
-			log.Printf("Warning: tree cache is in a bad state. Rebuilding...")
-			if err := cfg.Store.RenderTreeStore(img.String(), true); err != nil {
-				return fmt.Errorf("error rendering tree image: %v", err)
-			}
-		}
-	} else {
+	}
+
+	if !useOverlay {
 		if err := aci.RenderACIWithImageID(img, s1, cfg.Store); err != nil {
 			return fmt.Errorf("error rendering ACI: %v", err)
 		}

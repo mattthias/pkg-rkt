@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/rocket/Godeps/_workspace/src/github.com/appc/spec/schema/types"
-	"github.com/coreos/rocket/common"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema/types"
+	"github.com/coreos/rkt/common"
 )
 
 const (
@@ -43,7 +43,7 @@ func ServiceUnitPath(root string, imageID types.Hash) string {
 }
 
 // RelEnvFilePath returns the path to the environment file for the given imageID
-// relative to the container's root
+// relative to the pod's root
 func RelEnvFilePath(imageID types.Hash) string {
 	return filepath.Join(envDir, types.ShortHash(imageID.String()))
 }

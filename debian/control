@@ -1,0 +1,18 @@
+Source: rkt
+Section: misc
+Priority: extra
+Maintainer: pkg-go <pkg-go-maintainers@lists.alioth.debian.org>
+Uploaders: Matthias Schmitz <matthias@sigxcpu.org>
+Build-Depends: debhelper (>= 9),
+               dh-golang,
+               golang-go
+Standards-Version: 3.9.6
+Homepage: https://github.com/coreos/rkt
+
+Package: rkt
+Architecture: amd64
+Description: CLI for running App Containers
+ rkt (pronounced "rock-it") is an alternative to the Docker runtime, designed
+ for server environments with the most rigorous security and production
+ requirements.  Rocket is oriented around the App Container specification,
+ a new set of simple and open specifications for a portable container format.

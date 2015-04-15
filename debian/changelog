@@ -1,0 +1,5 @@
+rkt (0.5.1-1) unstable; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Matthias Schmitz <matthias@sigxcpu.org>  Wed, 11 Feb 2015 19:44:57 +0100

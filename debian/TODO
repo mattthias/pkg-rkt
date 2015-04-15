@@ -1,0 +1,15 @@
+
+According to https://wiki.debian.org/MichaelStapelberg/GoPackaging libs are in
+/usr/share/gocode/. 
+
+Build a Debian stage1.aci
+
+
+get all deps for the binaries:
+ ldd /bin/bash |gawk '{print $1}'
+
+
+
+Do grep all ^bin/  from stage1/rootfs/usr/manifest.d/systemd and run ldd for all deps.
+
+

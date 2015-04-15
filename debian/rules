@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+export DH_OPTIONS
+export DH_GOPKG := github.com/coreos/rkt
+
+%:
+	dh $@ --buildsystem=golang --with=golang
+
+override_dh_auto_test:
+	echo "Tests are br0ken at the moment"
+
+override_dh_auto_install:
+	dh_auto_install -O--buildsystem=golang
+	# delete binaries meant for being installed in an ACI
+	rm debian/rkt/usr/bin/static
+	rm debian/rkt/usr/bin/veth
+	rm debian/rkt/usr/bin/bridge
+	rm debian/rkt/usr/bin/init
+	# don't install the source code as this is a binary only package
+	rm -rf debian/rkt/usr/share/gocode
